@@ -12,7 +12,7 @@ ALLOWED_HOSTS = [os.environ.get('RENDER_EXTERNAL_HOSTNAME'), 'localhost', '127.0
 SITE_ID = 1
 
 INSTALLED_APPS = [
-    'suit',
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
