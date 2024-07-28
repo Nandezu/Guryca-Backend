@@ -1,0 +1,72 @@
+Watching for file changes with StatReloader
+Received login request data: {'username': 'User5', 'password': 'Bystrice1+'}
+Login attempt: username=User5
+Login successful for user: User5
+Fetching try-on results for user: User5
+Deleting TryOnResult with id: 48, image URL: https://usersnandezu.s3.amazonaws.com/tryon_results/tryon_72_9_1720517465.jpg
+Successfully deleted TryOnResult with id: 48
+Not Found: /user/users/undefined/
+Fetching try-on results for user: User5
+Not Found: /user/users/undefined/
+Fetching try-on results for user: User5
+Not Found: /user/users/undefined/
+Not Found: /user/users/undefined/
+Fetching try-on results for user: User5
+Not Found: /user/users/undefined/
+Fetching try-on results for user: User5
+Not Found: /users/undefined/
+Not Found: /user/users/undefined/
+Not Found: /user/users/undefined/
+Fetching try-on results for user: User5
+Not Found: /user/users/undefined/
+Not Found: /user/users/undefined/
+Received login request data: {'username': 'User5', 'password': 'Bystrice1+'}
+Login attempt: username=User5
+Login successful for user: User5
+Fetching try-on results for user: User5
+Deleting TryOnResult with id: 47, image URL: https://usersnandezu.s3.amazonaws.com/tryon_results/tryon_72_10_1720517378.jpg
+Successfully deleted TryOnResult with id: 47
+Fetching try-on results for user: User5
+Received try-on request
+Product ID: 11
+Found product: Dress in printed poplin
+Input data: {'garm_img': 'https://dressusa.s3.amazonaws.com/MAX+MARA+2.png', 'human_img': 'https://usersnandezu.s3.amazonaws.com/profile_images/4818423d-6dd4-42c1-a62b-3b328b1a1414.jpg', 'garment_des': 'dresses', 'category': 'dresses'}
+Running Replicate model
+HTTP Request: POST https://api.replicate.com/v1/predictions "HTTP/1.1 201 Created"
+HTTP Request: GET https://api.replicate.com/v1/models/cuuupid/idm-vton/versions/906425dbca90663ff5427624839572cc56ea7d380343d13e2a4c4b09d3f0c30f "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+HTTP Request: GET https://api.replicate.com/v1/predictions/ssc0v9c05xrj40cgjyj84ktb94 "HTTP/1.1 200 OK"
+Replicate output: https://replicate.delivery/yhqm/hUtvg0WTlPoea66GPPnf4VnIJRy8D6JpFsqT6fuhSOlFUdNmA/output.jpg
+Fetching try-on results for user: User5
+Not Found: /user/users/undefined/
+Not Found: /user/users/undefined/
+C:\Zalman\Users\Document\nandeback\user\views.py changed, reloading.
+Watching for file changes with StatReloader
+C:\Zalman\Users\Document\nandeback\user\views.py changed, reloading.
+Watching for file changes with StatReloader
+C:\Zalman\Users\Document\nandeback\tryon\views.py changed, reloading.
+Watching for file changes with StatReloader
+Not Found: /user/users/undefined/
+Not Found: /user/users/undefined/
+Fetching try-on results for user: User5
+C:\Zalman\Users\Document\nandeback\nandeback\settings.py changed, reloading.

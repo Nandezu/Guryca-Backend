@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Detail</title>
+</head>
+<body>
+    <h1>{{ user.username }}</h1>
+    <p>Email: {{ user.email }}</p>
+    <p>Gender: {{ user.gender }}</p>
+    <p>Shopping Region: {{ user.shopping_region }}</p>
+    <p>Profile Image: <img src="{{ user.profile_image.url }}" alt="{{ user.username }}"></p>
+</body>
+</html>
