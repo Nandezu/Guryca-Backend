@@ -1,0 +1,1 @@
+echo "This file ensures the static folder is tracked by Git." > static/placeholder.txt
