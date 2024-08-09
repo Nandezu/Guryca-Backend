@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'tryon',
     'storages',
     'django_filters',
+    
 ]
 
 AUTH_USER_MODEL = 'user.CustomUser'
@@ -183,39 +184,3 @@ WHITENOISE_USE_FINDERS = True
 WHITENOISE_MANIFEST_STRICT = False
 WHITENOISE_ALLOW_ALL_ORIGINS = True
 
-# Nové konfigurace pro in-app nákupy
-SUBSCRIPTION_PRODUCTS = {
-    'ios': {
-        'BASIC_MONTHLY': 'com.nandezu.basic_monthly',
-        'PRO_MONTHLY': 'com.nandezu.promonthly',
-        'PREMIUM_MONTHLY': 'com.nandezu.premiummonthly',
-        'BASIC_ANNUAL': 'com.nandezu.basicannual',
-        'PRO_ANNUAL': 'com.nandezu.proannual',
-        'PREMIUM_ANNUAL': 'com.nandezu.premiumannual',
-    },
-    'android': {
-        'BASIC_MONTHLY': 'com.nandezu.basic_monthly_android',
-        'PRO_MONTHLY': 'com.nandezu.promonthly_android',
-        'PREMIUM_MONTHLY': 'com.nandezu.premiummonthly_android',
-        'BASIC_ANNUAL': 'com.nandezu.basicannual_android',
-        'PRO_ANNUAL': 'com.nandezu.proannual_android',
-        'PREMIUM_ANNUAL': 'com.nandezu.premiumannual_android',
-    }
-}
-
-SUBSCRIPTION_MAPPING = {
-    'com.nandezu.basic_monthly': ('basic', 30),
-    'com.nandezu.promonthly': ('pro', 30),
-    'com.nandezu.premiummonthly': ('premium', 30),
-    'com.nandezu.basicannual': ('basic', 365),
-    'com.nandezu.proannual': ('pro', 365),
-    'com.nandezu.premiumannual': ('premium', 365),
-    'com.nandezu.basic_monthly_android': ('basic', 30),
-    'com.nandezu.promonthly_android': ('pro', 30),
-    'com.nandezu.premiummonthly_android': ('premium', 30),
-    'com.nandezu.basicannual_android': ('basic', 365),
-    'com.nandezu.proannual_android': ('pro', 365),
-    'com.nandezu.premiumannual_android': ('premium', 365),
-}
-
-VERIFY_PURCHASES = os.environ.get('NANDEZU_ENV') == 'production'

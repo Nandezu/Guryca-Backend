@@ -35,6 +35,8 @@ INSTALLED_APPS = [
     'tryon',
     'storages',
     'django_filters',
+    'django_celery_results',
+    'django_celery_beat',
 ]
 
 AUTH_USER_MODEL = 'user.CustomUser'
@@ -183,39 +185,20 @@ WHITENOISE_USE_FINDERS = True
 WHITENOISE_MANIFEST_STRICT = False
 WHITENOISE_ALLOW_ALL_ORIGINS = True
 
-# Nové konfigurace pro in-app nákupy
-SUBSCRIPTION_PRODUCTS = {
-    'ios': {
-        'BASIC_MONTHLY': 'com.nandezu.basic_monthly',
-        'PRO_MONTHLY': 'com.nandezu.promonthly',
-        'PREMIUM_MONTHLY': 'com.nandezu.premiummonthly',
-        'BASIC_ANNUAL': 'com.nandezu.basicannual',
-        'PRO_ANNUAL': 'com.nandezu.proannual',
-        'PREMIUM_ANNUAL': 'com.nandezu.premiumannual',
-    },
-    'android': {
-        'BASIC_MONTHLY': 'com.nandezu.basic_monthly_android',
-        'PRO_MONTHLY': 'com.nandezu.promonthly_android',
-        'PREMIUM_MONTHLY': 'com.nandezu.premiummonthly_android',
-        'BASIC_ANNUAL': 'com.nandezu.basicannual_android',
-        'PRO_ANNUAL': 'com.nandezu.proannual_android',
-        'PREMIUM_ANNUAL': 'com.nandezu.premiumannual_android',
-    }
-}
+# Celery Configuration Options
+CELERY_TIMEZONE = "UTC"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'
+CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
 
-SUBSCRIPTION_MAPPING = {
-    'com.nandezu.basic_monthly': ('basic', 30),
-    'com.nandezu.promonthly': ('pro', 30),
-    'com.nandezu.premiummonthly': ('premium', 30),
-    'com.nandezu.basicannual': ('basic', 365),
-    'com.nandezu.proannual': ('pro', 365),
-    'com.nandezu.premiumannual': ('premium', 365),
-    'com.nandezu.basic_monthly_android': ('basic', 30),
-    'com.nandezu.promonthly_android': ('pro', 30),
-    'com.nandezu.premiummonthly_android': ('premium', 30),
-    'com.nandezu.basicannual_android': ('basic', 365),
-    'com.nandezu.proannual_android': ('pro', 365),
-    'com.nandezu.premiumannual_android': ('premium', 365),
-}
+# Celery Beat settings
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
-VERIFY_PURCHASES = os.environ.get('NANDEZU_ENV') == 'production'
+# Dodatečná Celery nastavení
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
