@@ -254,9 +254,6 @@ def login(request):
 
 @api_view(['POST'])
 def register(request):
-    logger.info("Register function called")
-    logger.info(f"Request method: {request.method}")
-    logger.info(f"Request path: {request.path}")
     logger.info(f"Received register request data: {request.data}")
     serializer = CustomUserSerializer(data=request.data)
     if serializer.is_valid():

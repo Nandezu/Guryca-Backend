@@ -3,7 +3,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from shop.views import ProductViewSet
 from user.views import (
-    CustomUserViewSet, FavoriteItemViewSet,
+    login, CustomUserViewSet, FavoriteItemViewSet, LogoutView,
     purchase_subscription, get_subscription_details, use_feature,
     cancel_subscription, change_subscription, get_available_plans,
     manual_subscription_update, reset_password_request, reset_password_confirm
@@ -19,8 +19,13 @@ router.register(r'favorites', FavoriteItemViewSet, basename='favorite')
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
-    path('user/', include('user.urls')),  # Toto zahrne všechny cesty z user/urls.py
+    path('user/', include('user.urls')),  # Toto zahrnuje všechny cesty z user/urls.py, včetně register
     path('tryon/', include('tryon.urls')),
+    
+    # Následující cesty ponecháváme pro zpětnou kompatibilitu, ale hlavní definice je nyní v user/urls.py
+    path('user/login/', login, name='login'),
+    path('user/logout/', LogoutView.as_view(), name='logout'),
+    path('favorites/toggle/', FavoriteItemViewSet.as_view({'post': 'toggle'}), name='favorite-toggle'),
     
     # Cesty pro funkce související s předplatným
     path('subscription/purchase/', purchase_subscription, name='purchase-subscription'),

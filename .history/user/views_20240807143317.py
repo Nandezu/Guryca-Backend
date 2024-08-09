@@ -24,28 +24,21 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.shortcuts import render
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
-from django.db import transaction
-from .models import CustomUser, FavoriteItem
+from .models import CustomUser, FavoriteItem, TemporaryRegistration
 from .serializers import CustomUserSerializer, FavoriteItemSerializer, FavoriteItemCreateSerializer, SubscriptionPlanSerializer
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from celery import shared_task
-
-# ... zbytek kódu zůstává stejný ...
 
 logger = logging.getLogger(__name__)
 
-# Apple App Store constants
+# Apple App Store konstanty
 APPLE_BUNDLE_ID = 'com.nandezu.nandefrond'
 APPLE_SHARED_SECRET = '588ae1e916b24e2a957e2ed3faa5714c'
 
-# Google Play constants (for future implementation)
+# Google Play konstanty (pro budoucí implementaci)
 GOOGLE_PACKAGE_NAME = 'com.nandezu.nandefrond'
 
-# Subscription product mapping
+# Mapování produktů na typy předplatného a dobu trvání
 SUBSCRIPTION_MAPPING = {
     'com.nandezu.basic_monthly': ('basic', 30),
     'com.nandezu.promonthly': ('pro', 30),
@@ -253,27 +246,98 @@ def login(request):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
-def register(request):
-    logger.info("Register function called")
-    logger.info(f"Request method: {request.method}")
-    logger.info(f"Request path: {request.path}")
-    logger.info(f"Received register request data: {request.data}")
+def pre_register(request):
+    logger.info(f"Received pre-register request data: {request.data}")
     serializer = CustomUserSerializer(data=request.data)
     if serializer.is_valid():
-        user = serializer.save()
-        token, _ = Token.objects.get_or_create(user=user)
+        confirmation_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        temp_reg = TemporaryRegistration(
+            username=serializer.validated_data['username'],
+            email=serializer.validated_data['email'],
+            password=serializer.validated_data['password'],
+            shopping_region=serializer.validated_data.get('shopping_region', ''),
+            gender=serializer.validated_data.get('gender', ''),
+            confirmation_code=confirmation_code
+        )
+        temp_reg.save()
+        
+        subject = 'Confirm your email for Nandezu'
+        html_message = render_to_string('emails/email_confirmation.html', {
+            'confirmation_code': confirmation_code
+        })
+        plain_message = strip_tags(html_message)
+        from_email = settings.DEFAULT_FROM_EMAIL
+        to_email = serializer.validated_data['email']
+
+        send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
         
         response_data = {
-            'token': token.key,
-            'user_id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'message': 'Registration completed successfully.'
+            'message': 'Please check your email for the confirmation code.',
+            'email': serializer.validated_data['email']
         }
-        logger.info(f"Registration successful for email: {user.email}")
+        logger.info(f"Pre-registration successful for email: {serializer.validated_data['email']}")
         return Response(response_data, status=status.HTTP_201_CREATED)
-    logger.warning(f"Registration failed: {serializer.errors}")
+    logger.warning(f"Pre-registration failed: {serializer.errors}")
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def confirm_email(request):
+    email = request.data.get('email')
+    confirmation_code = request.data.get('confirmation_code')
+    
+    try:
+        temp_reg = TemporaryRegistration.objects.get(email=email, confirmation_code=confirmation_code)
+    except TemporaryRegistration.DoesNotExist:
+        return Response({'error': 'Invalid email or confirmation code'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if temp_reg.expires_at < timezone.now():
+        temp_reg.delete()
+        return Response({'error': 'Confirmation code has expired'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = CustomUser.objects.create_user(
+        username=temp_reg.username,
+        email=temp_reg.email,
+        password=temp_reg.password,
+        shopping_region=temp_reg.shopping_region,
+        gender=temp_reg.gender
+    )
+    user.email_confirmed = True
+    user.save()
+
+    temp_reg.delete()
+
+    token, _ = Token.objects.get_or_create(user=user)
+    response_data = {
+        'token': token.key,
+        'user_id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'message': 'Email confirmed and registration completed successfully.'
+    }
+    return Response(response_data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def resend_confirmation(request):
+    email = request.data.get('email')
+    
+    try:
+        temp_reg = TemporaryRegistration.objects.get(email=email)
+    except TemporaryRegistration.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    temp_reg.confirmation_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    temp_reg.save()
+
+    subject = 'Confirm your email for Nandezu'
+    html_message = render_to_string('emails/email_confirmation.html', {
+        'confirmation_code': temp_reg.confirmation_code
+    })
+    plain_message = strip_tags(html_message)
+    from_email = settings.DEFAULT_FROM_EMAIL
+    to_email = temp_reg.email
+    send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+
+    return Response({'message': 'New confirmation code sent'}, status=status.HTTP_200_OK)
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
@@ -316,9 +380,20 @@ def change_email(request):
         return Response({'error': 'Email is already registered.'}, status=status.HTTP_400_BAD_REQUEST)
 
     user.email = new_email
+    user.email_confirmed = False
+    user.generate_confirmation_code()
     user.save()
 
-    return Response({'message': 'Email changed successfully.'}, status=status.HTTP_200_OK)
+    subject = 'Confirm your new email for Nandezu'
+    html_message = render_to_string('emails/email_confirmation.html', {
+        'confirmation_code': user.confirmation_code
+    })
+    plain_message = strip_tags(html_message)
+    from_email = settings.DEFAULT_FROM_EMAIL
+    to_email = new_email
+    send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+
+    return Response({'message': 'Email changed successfully. Please check your new email for the confirmation code.'}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -365,20 +440,19 @@ def change_region(request):
 def purchase_subscription(request):
     user = request.user
     plan_type = request.data.get('plan_type')
-    duration = request.data.get('duration', 30)  # Default value is 30 days
+    duration = request.data.get('duration', 30)  # Výchozí hodnota je 30 dní
 
     if plan_type not in ['basic', 'pro', 'premium', 'basic_annual', 'pro_annual', 'premium_annual']:
         return Response({'error': 'Invalid plan type'}, status=status.HTTP_400_BAD_REQUEST)
 
-    success = update_subscription(user, plan_type, duration)
+    # Zde by byla logika pro zpracování platby
 
-    if success:
-        return Response({
-            'message': f'{plan_type.replace("_", " ").title()} purchased successfully',
-            'subscription_details': CustomUserSerializer(user).data
-        }, status=status.HTTP_200_OK)
-    else:
-        return Response({'error': 'Failed to update subscription'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    user.update_subscription(plan_type, duration)
+
+    return Response({
+        'message': f'{plan_type.replace("_", " ").title()} purchased successfully',
+        'subscription_details': CustomUserSerializer(user).data
+    }, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -394,10 +468,10 @@ def use_feature(request):
     user = request.user
     feature_type = request.data.get('feature_type')
 
-    # Automatic renewal of "Free Plan" limits
+    # Automatické obnovení "Free Plan" limitů
     user.auto_update_free_plan()
 
-    # Automatic renewal of annual plans
+    # Automatické obnovení ročních plánů
     user.auto_update_annual_plans()
 
     success, message = user.use_feature(feature_type)
@@ -419,7 +493,7 @@ def cancel_subscription(request):
     if user.subscription_type == 'free':
         return Response({'error': 'You do not have an active paid subscription'}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Set subscription cancellation for the end of the current period
+    # Nastavit zrušení předplatného po skončení aktuálního období
     user.is_cancelled = True
     user.save(update_fields=['is_cancelled'])
 
@@ -440,15 +514,14 @@ def change_subscription(request):
     if user.subscription_type == new_plan_type:
         return Response({'error': 'You are already subscribed to this plan'}, status=status.HTTP_400_BAD_REQUEST)
 
-    success = update_subscription(user, new_plan_type)
+    # Zde by byla logika pro změnu předplatného v platebním systému
 
-    if success:
-        return Response({
-            'message': f'Subscription changed to {new_plan_type.replace("_", " ").title()} successfully',
-            'subscription_details': CustomUserSerializer(user).data
-        }, status=status.HTTP_200_OK)
-    else:
-        return Response({'error': 'Failed to change subscription'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    user.update_subscription(new_plan_type)
+
+    return Response({
+        'message': f'Subscription changed to {new_plan_type.replace("_", " ").title()} successfully',
+        'subscription_details': CustomUserSerializer(user).data
+    }, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -511,7 +584,7 @@ def get_available_plans(request):
 def manual_subscription_update(request):
     user_id = request.data.get('user_id')
     new_plan_type = request.data.get('new_plan_type')
-    duration = request.data.get('duration', 30)  # Default value is 30 days
+    duration = request.data.get('duration', 30)  # Výchozí hodnota je 30 dní
 
     try:
         user = CustomUser.objects.get(id=user_id)
@@ -521,15 +594,12 @@ def manual_subscription_update(request):
     if new_plan_type not in ['free', 'basic', 'pro', 'premium', 'basic_annual', 'pro_annual', 'premium_annual']:
         return Response({'error': 'Invalid plan type'}, status=status.HTTP_400_BAD_REQUEST)
 
-    success = update_subscription(user, new_plan_type, duration)
+    user.update_subscription(new_plan_type, duration)
 
-    if success:
-        return Response({
-            'message': f'Subscription manually updated to {new_plan_type.replace("_", " ").title()} for user {user.username}',
-            'subscription_details': CustomUserSerializer(user).data
-        }, status=status.HTTP_200_OK)
-    else:
-        return Response({'error': 'Failed to update subscription'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response({
+        'message': f'Subscription manually updated to {new_plan_type.replace("_", " ").title()} for user {user.username}',
+        'subscription_details': CustomUserSerializer(user).data
+    }, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def reset_password_request(request):
@@ -620,7 +690,7 @@ def verify_apple_purchase(request):
     receipt_data = data.get('receiptData')
 
     verify_url = 'https://buy.itunes.apple.com/verifyReceipt'
-    # For testing use: 'https://sandbox.itunes.apple.com/verifyReceipt'
+    # Pro testování použijte: 'https://sandbox.itunes.apple.com/verifyReceipt'
 
     try:
         response = requests.post(verify_url, json={
@@ -631,13 +701,13 @@ def verify_apple_purchase(request):
 
         if response.status_code == 200:
             receipt_info = response.json()
-            if receipt_info['status'] == 0:  # 0 means a valid receipt
+            if receipt_info['status'] == 0:  # 0 znamená platný účet
                 latest_receipt_info = receipt_info['latest_receipt_info'][0]
                 product_id = latest_receipt_info['product_id']
-                expires_date = int(latest_receipt_info['expires_date_ms']) / 1000  # Convert to seconds
+                expires_date = int(latest_receipt_info['expires_date_ms']) / 1000  # Převod na sekundy
                 
                 if expires_date > time.time():
-                    # Subscription is still active
+                    # Předplatné je stále aktivní
                     update_user_subscription(request.user, product_id, expires_date)
                     return JsonResponse({'success': True, 'message': 'Subscription verified and updated'})
                 else:
@@ -654,25 +724,8 @@ def verify_apple_purchase(request):
 @csrf_exempt
 @permission_classes([IsAuthenticated])
 def verify_google_purchase(request):
-    # This is a placeholder for future Google Play verification implementation
-    # You'll need to implement this when you have the actual Google credentials
-    data = json.loads(request.body)
-    purchase_token = data.get('purchaseToken')
-    product_id = data.get('productId')
-
-    try:
-        # This is a mock verification. Replace with actual Google Play verification when implemented
-        # You'll use the Google Play Developer API here
-        verified = True  # This should be the result of the actual verification
-        if verified:
-            expires_date = time.time() + 30 * 24 * 60 * 60  # Mock expiration date (30 days from now)
-            update_user_subscription(request.user, product_id, expires_date)
-            return JsonResponse({'success': True, 'message': 'Subscription verified and updated'})
-        else:
-            return JsonResponse({'success': False, 'message': 'Invalid purchase'})
-    except Exception as e:
-        logger.error(f"Error verifying Google purchase: {str(e)}")
-        return JsonResponse({'success': False, 'message': 'An error occurred during verification'}, status=500)
+    # Toto je zástupné místo pro budoucí implementaci Google Play verifikace
+    return JsonResponse({'success': False, 'message': 'Google Play verification not implemented yet'}, status=501)
 
 def update_user_subscription(user, product_id, expires_date):
     try:
@@ -693,99 +746,61 @@ def update_user_subscription(user, product_id, expires_date):
     except Exception as e:
         logger.error(f"Error updating user subscription: {str(e)}")
 
-@shared_task
-def check_and_update_subscriptions():
-    users = CustomUser.objects.filter(subscription_type__in=['basic', 'pro', 'premium', 'basic_annual', 'pro_annual', 'premium_annual'])
-    for user in users:
-        if user.subscription_end_date and user.subscription_end_date <= timezone.now():
-            if user.is_cancelled:
-                user.subscription_type = 'free'
-                user.save()
-            else:
-                # Attempt to renew subscription
-                success = renew_subscription(user)
-                if not success:
-                    # If renewal fails, set subscription to 'free'
-                    user.subscription_type = 'free'
-                    user.save()
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_subscription_details(request):
+    user = request.user
+    user.auto_update_free_plan()
+    user.auto_update_annual_plans()
+    return JsonResponse({
+        'subscription_type': user.subscription_type,
+        'is_active': user.is_subscription_active,
+        'end_date': user.subscription_end_date.isoformat() if user.subscription_end_date else None,
+        'is_cancelled': user.is_cancelled,
+        'virtual_try_ons_remaining': user.virtual_try_ons_remaining,
+        'profile_images_remaining': user.profile_images_remaining,
+        'try_on_results_remaining': user.try_on_results_remaining
+    })
 
-def renew_subscription(user):
-    # Implement logic for subscription renewal
-    # This should include interaction with the payment gateway
-    # Return True if renewal is successful, otherwise False
-    pass
-
-def update_subscription(user, new_type, duration=None):
-    max_attempts = 3
-    for attempt in range(max_attempts):
-        try:
-            with transaction.atomic():
-                user.update_subscription(new_type, duration)
-            return True
-        except Exception as e:
-            if attempt == max_attempts - 1:
-                # Log the error and notify admins
-                logger.error(f"Failed to update subscription for user {user.id}: {str(e)}")
-                notify_admins(f"Subscription update failed for user {user.id}")
-                return False
-    return False
-
-def notify_admins(message):
-    # Implement logic to notify admins (e.g., send email, Slack message, etc.)
-    pass
-
-@csrf_exempt
-@require_POST
-def apple_server_notification(request):
-    payload = json.loads(request.body)
-    notification_type = payload.get('notification_type')
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_subscription(request):
+    user = request.user
+    if user.subscription_type == 'free':
+        return JsonResponse({'error': 'You do not have an active paid subscription'}, status=400)
     
-    if notification_type == 'INITIAL_BUY':
-        process_apple_purchase(payload)
-    elif notification_type == 'RENEWAL':
-        process_apple_renewal(payload)
-    elif notification_type == 'CANCEL':
-        process_apple_cancellation(payload)
-    
-    return HttpResponse(status=200)
+    user.is_cancelled = True
+    user.save()
 
-@csrf_exempt
-@require_POST
-def google_server_notification(request):
-    payload = json.loads(request.body)
-    notification_type = payload.get('notificationType')
-    
-    if notification_type == 1:  # SUBSCRIPTION_RECOVERED
-        process_google_recovery(payload)
-    elif notification_type == 2:  # SUBSCRIPTION_RENEWED
-        process_google_renewal(payload)
-    elif notification_type == 3:  # SUBSCRIPTION_CANCELED
-        process_google_cancellation(payload)
-    
-    return HttpResponse(status=200)
+    return JsonResponse({
+        'message': 'Subscription cancellation scheduled for end of current period',
+        'end_date': user.subscription_end_date.isoformat()
+    })
 
-def process_apple_purchase(payload):
-    # Implement logic for processing new Apple purchase
-    pass
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def use_feature(request):
+    user = request.user
+    feature_type = request.data.get('feature_type')
 
-def process_apple_renewal(payload):
-    # Implement logic for processing Apple subscription renewal
-    pass
+    user.auto_update_free_plan()
+    user.auto_update_annual_plans()
 
-def process_apple_cancellation(payload):
-    # Implement logic for processing Apple subscription cancellation
-    pass
+    success, message = user.use_feature(feature_type)
 
-def process_google_recovery(payload):
-    # Implement logic for processing recovered Google subscription
-    pass
+    if success:
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'remaining': getattr(user, f"{feature_type}_remaining", 0)
+        })
+    else:
+        return JsonResponse({'error': message}, status=403)
 
-def process_google_renewal(payload):
-    # Implement logic for processing Google subscription renewal
-    pass
+# Další potřebné importy a funkce...
 
-def process_google_cancellation(payload):
-    # Implement logic for processing Google subscription cancellation
-    pass
+# Zde můžete přidat další views podle potřeby
 
-# Additional helper functions and views can be added as needed
+# Nezapomeňte, že pro plnou funkčnost in-app nákupů budete muset implementovat
+# odpovídající logiku na straně klienta (v React Native) pro iniciaci nákupu
+# a odeslání potvrzení o nákupu na server k ověření.

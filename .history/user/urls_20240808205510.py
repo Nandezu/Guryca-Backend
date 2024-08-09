@@ -3,7 +3,10 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     change_username, change_email, change_password, change_region,
     CustomUserViewSet, FavoriteItemViewSet, login, register, LogoutView,
-    reset_password_page, verify_purchase, verify_apple_purchase, verify_google_purchase,
+    purchase_subscription, get_subscription_details, use_feature,
+    cancel_subscription, change_subscription, get_available_plans,
+    manual_subscription_update, reset_password_request, reset_password_confirm, reset_password_page,
+    verify_purchase, verify_apple_purchase, verify_google_purchase,
     apple_server_notification, google_server_notification
 )
 
@@ -32,8 +35,19 @@ urlpatterns = [
          CustomUserViewSet.as_view({'post': 'set_active_profile_image'}),
          name='user-set-active-profile-image'),
     
+    # Cesty pro funkce související s předplatným
+    path('subscription/purchase/', purchase_subscription, name='purchase-subscription'),
+    path('subscription/details/', get_subscription_details, name='subscription-details'),
+    path('subscription/use_feature/', use_feature, name='use-feature'),
+    path('subscription/cancel/', cancel_subscription, name='cancel-subscription'),
+    path('subscription/change/', change_subscription, name='change-subscription'),
+    path('subscription/plans/', get_available_plans, name='available-plans'),
+    path('subscription/manual_update/', manual_subscription_update, name='manual-subscription-update'),
+    
     # Cesty pro reset hesla
     path('reset-password/', reset_password_page, name='reset-password-page'),
+    path('reset-password-request/', reset_password_request, name='reset-password-request'),
+    path('reset-password-confirm/', reset_password_confirm, name='reset-password-confirm'),
     
     # Cesty pro ověřování nákupů
     path('verify_purchase/', verify_purchase, name='verify-purchase'),

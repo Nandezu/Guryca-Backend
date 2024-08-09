@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-h!xpc8nnawpijntcf+9+q6d4d-o)3(%e&71fx5*w=)l8#@)z2l'
 
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = False
 
 ALLOWED_HOSTS = [
     os.environ.get('RENDER_EXTERNAL_HOSTNAME'),
@@ -35,8 +35,7 @@ INSTALLED_APPS = [
     'tryon',
     'storages',
     'django_filters',
-    'django_celery_results',
-    'django_celery_beat',
+    'django_celery_results',  # Add this line
 ]
 
 AUTH_USER_MODEL = 'user.CustomUser'
@@ -74,11 +73,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'nandeback.wsgi.application'
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default='sqlite:///' + os.path.join(BASE_DIR, 'db.sqlite3'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    'default': dj_database_url.config(default=os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3'))
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -136,7 +131,7 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
-        'level': 'DEBUG',
+        'level': 'INFO',
     },
 }
 
@@ -171,15 +166,13 @@ EMAIL_TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates', 'emails')
 if os.environ.get('NANDEZU_ENV') == 'production':
     EXPO_SCHEME = 'nandefrond'
     PASSWORD_RESET_URL = f'{EXPO_SCHEME}://reset-password'
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
 else:
     EXPO_DEV_URL = 'exp://192.168.0.106:8081'
     PASSWORD_RESET_URL = f'{EXPO_DEV_URL}/--/reset-password'
-    SECURE_SSL_REDIRECT = False
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
+
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_MANIFEST_STRICT = False
@@ -195,3 +188,6 @@ CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
 
 # Celery Beat settings
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Add django_celery_beat to INSTALLED_APPS
+INSTALLED_APPS += ['django_celery_beat']

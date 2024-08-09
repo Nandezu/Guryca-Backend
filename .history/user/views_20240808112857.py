@@ -28,13 +28,11 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.db import transaction
-from .models import CustomUser, FavoriteItem
+from .models import CustomUser, FavoriteItem, TemporaryRegistration
 from .serializers import CustomUserSerializer, FavoriteItemSerializer, FavoriteItemCreateSerializer, SubscriptionPlanSerializer
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from celery import shared_task
-
-# ... zbytek kódu zůstává stejný ...
 
 logger = logging.getLogger(__name__)
 
@@ -253,27 +251,99 @@ def login(request):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
-def register(request):
-    logger.info("Register function called")
-    logger.info(f"Request method: {request.method}")
-    logger.info(f"Request path: {request.path}")
-    logger.info(f"Received register request data: {request.data}")
+def pre_register(request):
+    logger.info(f"Received pre-register request data: {request.data}")
     serializer = CustomUserSerializer(data=request.data)
     if serializer.is_valid():
-        user = serializer.save()
-        token, _ = Token.objects.get_or_create(user=user)
+        confirmation_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        temp_reg = TemporaryRegistration(
+            username=serializer.validated_data['username'],
+            email=serializer.validated_data['email'],
+            password=serializer.validated_data['password'],
+            shopping_region=serializer.validated_data.get('shopping_region', ''),
+            gender=serializer.validated_data.get('gender', ''),
+            confirmation_code=confirmation_code
+        )
+        temp_reg.save()
+        
+        subject = 'Confirm your email for Nandezu'
+        html_message = render_to_string('emails/email_confirmation.html', {
+            'confirmation_code': confirmation_code
+        })
+        plain_message = strip_tags(html_message)
+        from_email = settings.DEFAULT_FROM_EMAIL
+        to_email = serializer.validated_data['email']
+
+        send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
         
         response_data = {
-            'token': token.key,
-            'user_id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'message': 'Registration completed successfully.'
+            'message': 'Please check your email for the confirmation code.',
+            'email': serializer.validated_data['email']
         }
-        logger.info(f"Registration successful for email: {user.email}")
+        logger.info(f"Pre-registration successful for email: {serializer.validated_data['email']}")
         return Response(response_data, status=status.HTTP_201_CREATED)
-    logger.warning(f"Registration failed: {serializer.errors}")
+    logger.warning(f"Pre-registration failed: {serializer.errors}")
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def confirm_email(request):
+    email = request.data.get('email')
+    confirmation_code = request.data.get('confirmation_code')
+    
+    try:
+        temp_reg = TemporaryRegistration.objects.get(email=email, confirmation_code=confirmation_code)
+    except TemporaryRegistration.DoesNotExist:
+        return Response({'error': 'Invalid email or confirmation code'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if temp_reg.expires_at < timezone.now():
+        temp_reg.delete()
+        return Response({'error': 'Confirmation code has expired'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = CustomUser.objects.create_user(
+        username=temp_reg.username,
+        email=temp_reg.email,
+        password=temp_reg.password,
+        shopping_region=temp_reg.shopping_region,
+        gender=temp_reg.gender
+    )
+    user.email_confirmed = True
+    user.save()
+
+    temp_reg.delete()
+
+    token, _ = Token.objects.get_or_create(user=user)
+    response_data = {
+        'token': token.key,
+        'user_id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'message': 'Email confirmed and registration completed successfully.'
+    }
+    return Response(response_data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def resend_confirmation(request):
+    email = request.data.get('email')
+    
+    try:
+        temp_reg = TemporaryRegistration.objects.get(email=email)
+    except TemporaryRegistration.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    temp_reg.confirmation_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    temp_reg.save()
+
+    subject = 'Confirm your email for Nandezu'
+    html_message = render_to_string('emails/email_confirmation.html', {
+        'confirmation_code': temp_reg.confirmation_code
+    })
+
+    plain_message = strip_tags(html_message)
+    from_email = settings.DEFAULT_FROM_EMAIL
+    to_email = temp_reg.email
+    send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+
+    return Response({'message': 'New confirmation code sent'}, status=status.HTTP_200_OK)
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
@@ -316,9 +386,20 @@ def change_email(request):
         return Response({'error': 'Email is already registered.'}, status=status.HTTP_400_BAD_REQUEST)
 
     user.email = new_email
+    user.email_confirmed = False
+    user.generate_confirmation_code()
     user.save()
 
-    return Response({'message': 'Email changed successfully.'}, status=status.HTTP_200_OK)
+    subject = 'Confirm your new email for Nandezu'
+    html_message = render_to_string('emails/email_confirmation.html', {
+        'confirmation_code': user.confirmation_code
+    })
+    plain_message = strip_tags(html_message)
+    from_email = settings.DEFAULT_FROM_EMAIL
+    to_email = new_email
+    send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+
+    return Response({'message': 'Email changed successfully. Please check your new email for the confirmation code.'}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

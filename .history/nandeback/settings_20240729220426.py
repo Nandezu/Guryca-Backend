@@ -6,14 +6,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-h!xpc8nnawpijntcf+9+q6d4d-o)3(%e&71fx5*w=)l8#@)z2l'
 
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = False
 
 ALLOWED_HOSTS = [
     os.environ.get('RENDER_EXTERNAL_HOSTNAME'),
     'localhost',
     '127.0.0.1',
-    '192.168.0.106',
-    'app-tdh1.onrender.com'
+    '192.168.0.106',  # Přidejte IP adresu vašeho lokálního zařízení
+    'app-tdh1.onrender.com'  # Přidejte doménu vašeho Render backendu
 ]
 SITE_ID = 1
 
@@ -35,8 +35,6 @@ INSTALLED_APPS = [
     'tryon',
     'storages',
     'django_filters',
-    'django_celery_results',
-    'django_celery_beat',
 ]
 
 AUTH_USER_MODEL = 'user.CustomUser'
@@ -74,11 +72,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'nandeback.wsgi.application'
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default='sqlite:///' + os.path.join(BASE_DIR, 'db.sqlite3'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    'default': dj_database_url.config(default=os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3'))
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -101,11 +95,13 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# Statické soubory (CSS, JavaScript, obrázky)
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
+# Média soubory
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
@@ -136,10 +132,11 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
-        'level': 'DEBUG',
+        'level': 'INFO',
     },
 }
 
+# AWS S3 settings
 AWS_ACCESS_KEY_ID = 'AKIA6GBMEM6GOI77EB6R'
 AWS_SECRET_ACCESS_KEY = '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'
 AWS_STORAGE_BUCKET_NAME = 'usersnandezu'
@@ -149,11 +146,14 @@ AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None
 AWS_S3_VERIFY = True
 
+# Nastavení pro ukládání médií do S3
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
+# URL pro média
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 
+# Email settings for SendGrid
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.sendgrid.net'
 EMAIL_PORT = 587
@@ -162,36 +162,29 @@ EMAIL_HOST_USER = 'apikey'
 EMAIL_HOST_PASSWORD = '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'
 DEFAULT_FROM_EMAIL = 'noreply@nandezu.com'
 
+# SendGrid API Key
 SENDGRID_API_KEY = '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'
 
-PASSWORD_RESET_TIMEOUT = 3600
+# Password reset settings
+PASSWORD_RESET_TIMEOUT = 3600  # 1 hour in seconds
 
+# Email template settings
 EMAIL_TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates', 'emails')
 
+# Nastavení pro reset hesla
 if os.environ.get('NANDEZU_ENV') == 'production':
     EXPO_SCHEME = 'nandefrond'
     PASSWORD_RESET_URL = f'{EXPO_SCHEME}://reset-password'
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
 else:
     EXPO_DEV_URL = 'exp://192.168.0.106:8081'
     PASSWORD_RESET_URL = f'{EXPO_DEV_URL}/--/reset-password'
-    SECURE_SSL_REDIRECT = False
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
 
+# Bezpečnostní nastavení pro produkci
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+# Whitenoise nastavení
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_MANIFEST_STRICT = False
 WHITENOISE_ALLOW_ALL_ORIGINS = True
-
-# Celery Configuration Options
-CELERY_TIMEZONE = "UTC"
-CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_CACHE_BACKEND = 'django-cache'
-CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
-
-# Celery Beat settings
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'

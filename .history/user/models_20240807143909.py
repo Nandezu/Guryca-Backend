@@ -6,6 +6,7 @@ from datetime import timedelta
 import random
 import string
 import secrets
+import uuid
 
 class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
@@ -29,7 +30,9 @@ class CustomUser(AbstractUser):
     try_on_results_remaining = models.IntegerField(default=7)
     is_cancelled = models.BooleanField(default=False)
 
-    # Odstraněno: email_confirmed, confirmation_code, confirmation_code_created_at
+    email_confirmed = models.BooleanField(default=False)
+    confirmation_code = models.CharField(max_length=6, blank=True)
+    confirmation_code_created_at = models.DateTimeField(null=True, blank=True)
     
     reset_token = models.CharField(max_length=100, null=True, blank=True)
     reset_token_created_at = models.DateTimeField(null=True, blank=True)
@@ -142,6 +145,11 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
 
+    def generate_confirmation_code(self):
+        self.confirmation_code = ''.join(random.choices(string.digits, k=6))
+        self.confirmation_code_created_at = timezone.now()
+        self.save(update_fields=['confirmation_code', 'confirmation_code_created_at'])
+
     def generate_reset_token(self):
         self.reset_token = secrets.token_urlsafe(32)
         self.reset_token_created_at = timezone.now()
@@ -152,11 +160,38 @@ class CustomUser(AbstractUser):
             return False
         return (timezone.now() - self.reset_token_created_at) < timedelta(days=3)
 
+    def is_confirmation_code_valid(self):
+        if not self.confirmation_code or not self.confirmation_code_created_at:
+            return False
+        return (timezone.now() - self.confirmation_code_created_at) < timedelta(days=3)
+
     def clear_expired_tokens(self):
         if self.reset_token and not self.is_reset_token_valid():
             self.reset_token = None
             self.reset_token_created_at = None
-            self.save(update_fields=['reset_token', 'reset_token_created_at'])
+        if self.confirmation_code and not self.is_confirmation_code_valid():
+            self.confirmation_code = None
+            self.confirmation_code_created_at = None
+        self.save(update_fields=['reset_token', 'reset_token_created_at', 'confirmation_code', 'confirmation_code_created_at'])
+
+class TemporaryRegistration(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    username = models.CharField(max_length=150)
+    email = models.EmailField()
+    password = models.CharField(max_length=128)  # Budeme ukládat hash hesla
+    shopping_region = models.CharField(max_length=100)
+    gender = models.CharField(max_length=20)
+    confirmation_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(hours=24)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Temporary registration for {self.email}"
 
 class FavoriteItem(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='favorites')

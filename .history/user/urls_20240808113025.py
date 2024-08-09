@@ -2,9 +2,13 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     change_username, change_email, change_password, change_region,
-    CustomUserViewSet, FavoriteItemViewSet, login, register, LogoutView,
-    reset_password_page, verify_purchase, verify_apple_purchase, verify_google_purchase,
-    apple_server_notification, google_server_notification
+    CustomUserViewSet, FavoriteItemViewSet, login, pre_register, LogoutView,
+    purchase_subscription, get_subscription_details, use_feature,
+    cancel_subscription, change_subscription, get_available_plans,
+    manual_subscription_update, confirm_email, resend_confirmation,
+    reset_password_request, reset_password_confirm, reset_password_page,
+    verify_purchase, verify_apple_purchase, verify_google_purchase,
+    apple_server_notification, google_server_notification  # Přidané nové views
 )
 
 router = DefaultRouter()
@@ -14,7 +18,7 @@ router.register(r'favorites', FavoriteItemViewSet, basename='favorite')
 urlpatterns = [
     path('', include(router.urls)),
     path('login/', login, name='login'),
-    path('register/', register, name='register'),  # Toto bude nyní dostupné na /user/register/
+    path('pre-register/', pre_register, name='pre-register'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('change_username/', change_username, name='change-username'),
     path('change_email/', change_email, name='change-email'),
@@ -31,16 +35,31 @@ urlpatterns = [
     path('users/<int:pk>/set_active_profile_image/',
          CustomUserViewSet.as_view({'post': 'set_active_profile_image'}),
          name='user-set-active-profile-image'),
-    
+         
+    # Cesty pro funkce související s předplatným
+    path('subscription/purchase/', purchase_subscription, name='purchase-subscription'),
+    path('subscription/details/', get_subscription_details, name='subscription-details'),
+    path('subscription/use_feature/', use_feature, name='use-feature'),
+    path('subscription/cancel/', cancel_subscription, name='cancel-subscription'),
+    path('subscription/change/', change_subscription, name='change-subscription'),
+    path('subscription/plans/', get_available_plans, name='available-plans'),
+    path('subscription/manual_update/', manual_subscription_update, name='manual-subscription-update'),
+         
+    # Cesty pro potvrzení e-mailu
+    path('confirm_email/', confirm_email, name='confirm-email'),
+    path('resend_confirmation/', resend_confirmation, name='resend-confirmation'),
+         
     # Cesty pro reset hesla
     path('reset-password/', reset_password_page, name='reset-password-page'),
-    
+    path('reset-password-request/', reset_password_request, name='reset-password-request'),
+    path('reset-password-confirm/', reset_password_confirm, name='reset-password-confirm'),
+     
     # Cesty pro ověřování nákupů
     path('verify_purchase/', verify_purchase, name='verify-purchase'),
     path('verify_apple_purchase/', verify_apple_purchase, name='verify-apple-purchase'),
     path('verify_google_purchase/', verify_google_purchase, name='verify-google-purchase'),
     
-    # Cesty pro server-to-server notifikace
+    # Nové cesty pro server-to-server notifikace
     path('apple-server-notification/', apple_server_notification, name='apple-server-notification'),
     path('google-server-notification/', google_server_notification, name='google-server-notification'),
 ]
