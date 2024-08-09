@@ -35,8 +35,7 @@ INSTALLED_APPS = [
     'tryon',
     'storages',
     'django_filters',
-    'django_celery_results',
-    'django_celery_beat',
+    
 ]
 
 AUTH_USER_MODEL = 'user.CustomUser'
