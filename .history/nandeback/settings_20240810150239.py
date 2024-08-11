@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'tryon',
     'storages',
     'django_filters',
+    'react_native_iap',  # Nově přidáno
 ]
 
 AUTH_USER_MODEL = 'user.CustomUser'
@@ -217,12 +218,12 @@ SUBSCRIPTION_PRODUCTS = {
         'PREMIUM_ANNUAL': 'com.nandezu.premiumannual',
     },
     'android': {
-        'BASIC_MONTHLY': 'basic.monthly',
-        'PRO_MONTHLY': 'pro.monthly',
-        'PREMIUM_MONTHLY': 'premium.monthly',
-        'BASIC_ANNUAL': 'basic.annual',
-        'PRO_ANNUAL': 'pro.annual',
-        'PREMIUM_ANNUAL': 'premium.annual',
+        'BASIC_MONTHLY': 'com.nandezu.basic_monthly_android',
+        'PRO_MONTHLY': 'com.nandezu.promonthly_android',
+        'PREMIUM_MONTHLY': 'com.nandezu.premiummonthly_android',
+        'BASIC_ANNUAL': 'com.nandezu.basicannual_android',
+        'PRO_ANNUAL': 'com.nandezu.proannual_android',
+        'PREMIUM_ANNUAL': 'com.nandezu.premiumannual_android',
     }
 }
 
@@ -233,22 +234,28 @@ SUBSCRIPTION_MAPPING = {
     'com.nandezu.basicannual': ('basic', 365),
     'com.nandezu.proannual': ('pro', 365),
     'com.nandezu.premiumannual': ('premium', 365),
-    'basic.monthly': ('basic', 30),
-    'pro.monthly': ('pro', 30),
-    'premium.monthly': ('premium', 30),
-    'basic.annual': ('basic', 365),
-    'pro.annual': ('pro', 365),
-    'premium.annual': ('premium', 365),
+    'com.nandezu.basic_monthly_android': ('basic', 30),
+    'com.nandezu.promonthly_android': ('pro', 30),
+    'com.nandezu.premiummonthly_android': ('premium', 30),
+    'com.nandezu.basicannual_android': ('basic', 365),
+    'com.nandezu.proannual_android': ('pro', 365),
+    'com.nandezu.premiumannual_android': ('premium', 365),
+}
+
+# Konfigurace pro react-native-iap
+REACT_NATIVE_IAP = {
+    'IOS_SANDBOX': not os.environ.get('NANDEZU_ENV') == 'production',
+    'ANDROID_SANDBOX': not os.environ.get('NANDEZU_ENV') == 'production',
 }
 
 VERIFY_PURCHASES = os.environ.get('NANDEZU_ENV') == 'production' or os.environ.get('VERIFY_PURCHASES', 'False') == 'True'
 
 # Apple App Store konfigurace
 APPLE_BUNDLE_ID = os.environ.get('APPLE_BUNDLE_ID', 'com.nandezu.nandefrond')
-APPLE_SHARED_SECRET = os.environ.get('APPLE_SHARED_SECRET', '588ae1e916b24e2a957e2ed3faa5714c')
+APPLE_SHARED_SECRET = os.environ.get('APPLE_SHARED_SECRET')
 
 # Google Play konfigurace
-GOOGLE_SERVICE_ACCOUNT_JSON = os.path.join(BASE_DIR, 'secrets', 'service_account.json')
+GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
 GOOGLE_PACKAGE_NAME = os.environ.get('GOOGLE_PACKAGE_NAME', 'com.nandezu.nandefrond')
 
 # Webhooky pro notifikace o nákupech

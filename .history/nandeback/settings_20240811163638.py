@@ -209,12 +209,12 @@ WHITENOISE_ALLOW_ALL_ORIGINS = True
 # Konfigurace pro in-app nákupy
 SUBSCRIPTION_PRODUCTS = {
     'ios': {
-        'BASIC_MONTHLY': 'com.nandezu.basic_monthly',
-        'PRO_MONTHLY': 'com.nandezu.promonthly',
-        'PREMIUM_MONTHLY': 'com.nandezu.premiummonthly',
-        'BASIC_ANNUAL': 'com.nandezu.basicannual',
-        'PRO_ANNUAL': 'com.nandezu.proannual',
-        'PREMIUM_ANNUAL': 'com.nandezu.premiumannual',
+        'BASIC_MONTHLY': 'basic.monthly',
+        'PRO_MONTHLY': 'pro.monthly',
+        'PREMIUM_MONTHLY': 'premium.monthly',
+        'BASIC_ANNUAL': 'basic.annual',
+        'PRO_ANNUAL': 'pro.annual',
+        'PREMIUM_ANNUAL': 'premium.annual',
     },
     'android': {
         'BASIC_MONTHLY': 'basic.monthly',
@@ -227,12 +227,6 @@ SUBSCRIPTION_PRODUCTS = {
 }
 
 SUBSCRIPTION_MAPPING = {
-    'com.nandezu.basic_monthly': ('basic', 30),
-    'com.nandezu.promonthly': ('pro', 30),
-    'com.nandezu.premiummonthly': ('premium', 30),
-    'com.nandezu.basicannual': ('basic', 365),
-    'com.nandezu.proannual': ('pro', 365),
-    'com.nandezu.premiumannual': ('premium', 365),
     'basic.monthly': ('basic', 30),
     'pro.monthly': ('pro', 30),
     'premium.monthly': ('premium', 30),
@@ -245,10 +239,10 @@ VERIFY_PURCHASES = os.environ.get('NANDEZU_ENV') == 'production' or os.environ.g
 
 # Apple App Store konfigurace
 APPLE_BUNDLE_ID = os.environ.get('APPLE_BUNDLE_ID', 'com.nandezu.nandefrond')
-APPLE_SHARED_SECRET = os.environ.get('APPLE_SHARED_SECRET', '588ae1e916b24e2a957e2ed3faa5714c')
+APPLE_SHARED_SECRET = os.environ.get('APPLE_SHARED_SECRET')
 
 # Google Play konfigurace
-GOOGLE_SERVICE_ACCOUNT_JSON = os.path.join(BASE_DIR, 'secrets', 'service_account.json')
+GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
 GOOGLE_PACKAGE_NAME = os.environ.get('GOOGLE_PACKAGE_NAME', 'com.nandezu.nandefrond')
 
 # Webhooky pro notifikace o nákupech

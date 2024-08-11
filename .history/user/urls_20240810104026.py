@@ -1,8 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    
-    purchase_webhook,
     change_username, change_email, change_password, change_region,
     CustomUserViewSet, FavoriteItemViewSet, login, register, LogoutView,
     reset_password_page, reset_password_request, reset_password_confirm,
@@ -49,6 +47,4 @@ urlpatterns = [
     path('subscription/use_feature/', use_feature, name='use-feature'),
     path('subscription/plans/', get_available_plans, name='available-plans'),
     path('subscription/manual_update/', manual_subscription_update, name='manual-subscription-update'),
-
-    path('purchase-webhook/', purchase_webhook, name='purchase-webhook'),
 ]

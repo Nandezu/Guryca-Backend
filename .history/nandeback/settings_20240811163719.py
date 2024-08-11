@@ -245,10 +245,10 @@ VERIFY_PURCHASES = os.environ.get('NANDEZU_ENV') == 'production' or os.environ.g
 
 # Apple App Store konfigurace
 APPLE_BUNDLE_ID = os.environ.get('APPLE_BUNDLE_ID', 'com.nandezu.nandefrond')
-APPLE_SHARED_SECRET = os.environ.get('APPLE_SHARED_SECRET', '588ae1e916b24e2a957e2ed3faa5714c')
+APPLE_SHARED_SECRET = os.environ.get('APPLE_SHARED_SECRET')
 
 # Google Play konfigurace
-GOOGLE_SERVICE_ACCOUNT_JSON = os.path.join(BASE_DIR, 'secrets', 'service_account.json')
+GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
 GOOGLE_PACKAGE_NAME = os.environ.get('GOOGLE_PACKAGE_NAME', 'com.nandezu.nandefrond')
 
 # Webhooky pro notifikace o nákupech

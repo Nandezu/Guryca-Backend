@@ -34,7 +34,20 @@ import requests
 logger = logging.getLogger(__name__)
 
 # Subscription product mapping
-SUBSCRIPTION_MAPPING = settings.SUBSCRIPTION_MAPPING
+SUBSCRIPTION_MAPPING = {
+    'com.nandezu.basic_monthly': ('basic', 30),
+    'com.nandezu.promonthly': ('pro', 30),
+    'com.nandezu.premiummonthly': ('premium', 30),
+    'com.nandezu.basicannual': ('basic', 365),
+    'com.nandezu.proannual': ('pro', 365),
+    'com.nandezu.premiumannual': ('premium', 365),
+    'basic.monthly': ('basic', 30),
+    'pro.monthly': ('pro', 30),
+    'premium.monthly': ('premium', 30),
+    'basic.annual': ('basic', 365),
+    'pro.annual': ('pro', 365),
+    'premium.annual': ('premium', 365),
+}
 
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
@@ -470,7 +483,7 @@ def get_available_plans(request):
             'features': ['50 VIRTUAL TRY-ONS', '30 PROFILE IMAGES', '20 TRY-ON RESULTS'],
             'ai_section': True,
             'new_section': True,
-            'product_id': settings.SUBSCRIPTION_PRODUCTS['android']['BASIC_MONTHLY']
+            'product_id': 'basic.monthly'
         },
         {
             'name': 'Pro Plan',
@@ -478,7 +491,7 @@ def get_available_plans(request):
             'features': ['100 VIRTUAL TRY-ONS', '50 PROFILE IMAGES', '40 TRY-ON RESULTS'],
             'ai_section': True,
             'new_section': True,
-            'product_id': settings.SUBSCRIPTION_PRODUCTS['android']['PRO_MONTHLY']
+            'product_id': 'pro.monthly'
         },
         {
             'name': 'Premium Plan',
@@ -486,7 +499,7 @@ def get_available_plans(request):
             'features': ['200 VIRTUAL TRY-ONS', '100 PROFILE IMAGES', '60 TRY-ON RESULTS'],
             'ai_section': True,
             'new_section': True,
-            'product_id': settings.SUBSCRIPTION_PRODUCTS['android']['PREMIUM_MONTHLY']
+            'product_id': 'premium.monthly'
         },
         {
             'name': 'Basic Annual Plan',
@@ -494,7 +507,7 @@ def get_available_plans(request):
             'features': ['50 VIRTUAL TRY-ONS monthly', '30 PROFILE IMAGES monthly', '20 TRY-ON RESULTS monthly'],
             'ai_section': True,
             'new_section': True,
-            'product_id': settings.SUBSCRIPTION_PRODUCTS['android']['BASIC_ANNUAL']
+            'product_id': 'basic.annual'
         },
         {
             'name': 'Pro Annual Plan',
@@ -502,7 +515,7 @@ def get_available_plans(request):
             'features': ['100 VIRTUAL TRY-ONS monthly', '50 PROFILE IMAGES monthly', '40 TRY-ON RESULTS monthly'],
             'ai_section': True,
             'new_section': True,
-            'product_id': settings.SUBSCRIPTION_PRODUCTS['android']['PRO_ANNUAL']
+            'product_id': 'pro.annual'
         },
         {
             'name': 'Premium Annual Plan',
@@ -510,7 +523,7 @@ def get_available_plans(request):
             'features': ['200 VIRTUAL TRY-ONS monthly', '100 PROFILE IMAGES monthly', '60 TRY-ON RESULTS monthly'],
             'ai_section': True,
             'new_section': True,
-            'product_id': settings.SUBSCRIPTION_PRODUCTS['android']['PREMIUM_ANNUAL']
+            'product_id': 'premium.annual'
         }
     ]
     return Response(SubscriptionPlanSerializer(plans, many=True).data)
@@ -624,11 +637,12 @@ def verify_purchase(product_id, purchase_token, is_ios):
     try:
         if is_ios:
             # Verifikace pro iOS
-            verify_url = 'https://sandbox.itunes.apple.com/verifyReceipt' if settings.DEBUG else 'https://buy.itunes.apple.com/verifyReceipt'
+            verify_url = 'https://sandbox.itunes.apple.com/verifyReceipt'  # Pro testování
+            # verify_url = 'https://buy.itunes.apple.com/verifyReceipt'  # Pro produkci
             
             request_data = {
                 'receipt-data': purchase_token,
-                'password': settings.APPLE_SHARED_SECRET,
+                'password': '588ae1e916b24e2a957e2ed3faa5714c',  # App-Specific Shared Secret
             }
             
             response = requests.post(verify_url, json=request_data)
@@ -642,12 +656,12 @@ def verify_purchase(product_id, purchase_token, is_ios):
         else:
             # Verifikace pro Google Play
             credentials = service_account.Credentials.from_service_account_file(
-                settings.GOOGLE_SERVICE_ACCOUNT_JSON,
+                'path/to/service_account.json',
                 scopes=['https://www.googleapis.com/auth/androidpublisher']
             )
             service = build('androidpublisher', 'v3', credentials=credentials)
             
-            package_name = settings.GOOGLE_PACKAGE_NAME
+            package_name = 'com.nandezu.nandefrond'
             
             purchase = service.purchases().subscriptions().get(
                 packageName=package_name,
@@ -661,12 +675,3 @@ def verify_purchase(product_id, purchase_token, is_ios):
     except Exception as e:
         logger.error(f"Error verifying purchase: {str(e)}")
         return False
-
-@api_view(['POST'])
-@csrf_exempt
-def purchase_webhook(request):
-    # Implementace zpracování webhook notifikací
-    # Toto bude záviset na tom, jak Google Play a Apple App Store posílají notifikace
-    logger.info("Received purchase webhook notification")
-    # Zde byste měli implementovat logiku pro zpracování notifikací
-    return Response({'status': 'received'}, status=status.HTTP_200_OK)
