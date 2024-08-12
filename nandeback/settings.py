@@ -47,7 +47,7 @@ JAZZMIN_SETTINGS = {
     "site_header": "Nande",
     "site_brand": "Nande",
     "welcome_sign": "Vítejte v Nande Admin",
-    "copyright": "Nande Ltd",
+    "copyright": "Nandezu Inc",
     "search_model": ["auth.User", "auth.Group"],
     "user_avatar": None,
     
