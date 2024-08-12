@@ -41,6 +41,24 @@ INSTALLED_APPS = [
     'django_filters',
 ]
 
+# Jednoduchá konfigurace Jazzminu
+JAZZMIN_SETTINGS = {
+    "site_title": "Nande Admin",
+    "site_header": "Nande",
+    "site_brand": "Nande",
+    "welcome_sign": "Vítejte v Nande Admin",
+    "copyright": "Nande Ltd",
+    "theme": "default",
+    "dark_mode_theme": "darkly",
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+    },
+    "show_sidebar": True,
+    "navigation_expanded": True,
+}
+
 AUTH_USER_MODEL = 'user.CustomUser'
 
 MIDDLEWARE = [
