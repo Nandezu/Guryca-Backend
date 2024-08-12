@@ -22,11 +22,13 @@ ALLOWED_HOSTS = [
 SITE_ID = 1
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'rest_framework',
@@ -38,6 +40,30 @@ INSTALLED_APPS = [
     'storages',
     'django_filters',
 ]
+
+# Upravená konfigurace Jazzminu
+JAZZMIN_SETTINGS = {
+    "site_title": "Nande Admin",
+    "site_header": "Nande",
+    "site_brand": "Nande",
+    "welcome_sign": "Vítejte v Nande Admin",
+    "copyright": "Nande Ltd",
+    "search_model": ["auth.User", "auth.Group"],
+    "user_avatar": None,
+    
+    # Top Menu
+    "topmenu_links": [
+        {"name": "Domů",  "url": "admin:index", "permissions": ["auth.view_user"]},
+    ],
+    
+    # UI Tweaks
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    
+    # Barvy a styl
+    "theme": "default",
+    "dark_mode_theme": "darkly",
+}
 
 AUTH_USER_MODEL = 'user.CustomUser'
 
@@ -112,11 +138,11 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Konfigurace pro statické soubory
+# Upravená konfigurace pro statické soubory
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -200,6 +226,10 @@ else:
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
+
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_ALLOW_ALL_ORIGINS = True
 
 # Konfigurace pro in-app nákupy
 SUBSCRIPTION_PRODUCTS = {
