@@ -7,6 +7,8 @@ import mimetypes
 import uuid
 import secrets
 import json
+import jwt
+from cryptography.hazmat.primitives import serialization
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, action, permission_classes
 from rest_framework.response import Response
@@ -33,7 +35,6 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-# Subscription product mapping
 SUBSCRIPTION_MAPPING = settings.SUBSCRIPTION_MAPPING
 
 class CustomUserViewSet(viewsets.ModelViewSet):
@@ -341,6 +342,49 @@ def change_region(request):
     user.save()
     return Response({'message': 'Region changed successfully.'}, status=status.HTTP_200_OK)
 
+def verify_apple_purchase(receipt_data):
+    verify_url = 'https://sandbox.itunes.apple.com/verifyReceipt' if settings.DEBUG else 'https://buy.itunes.apple.com/verifyReceipt'
+    request_data = {
+        'receipt-data': receipt_data,
+        'password': settings.APPLE_SHARED_SECRET,
+    }
+    
+    response = requests.post(verify_url, json=request_data)
+    response_data = response.json()
+    
+    if response_data['status'] == 0:
+        latest_receipt_info = response_data.get('latest_receipt_info', [])
+        if latest_receipt_info:
+            subscription_info = latest_receipt_info[0]
+            product_id = subscription_info.get('product_id')
+            expires_date = subscription_info.get('expires_date_ms')
+            return True, product_id, expires_date
+    return False, None, None
+
+def verify_google_purchase(product_id, purchase_token):
+    credentials = service_account.Credentials.from_service_account_file(
+        settings.GOOGLE_SERVICE_ACCOUNT_JSON,
+        scopes=['https://www.googleapis.com/auth/androidpublisher']
+    )
+    service = build('androidpublisher', 'v3', credentials=credentials)
+    
+    package_name = settings.GOOGLE_PACKAGE_NAME
+    
+    try:
+        purchase = service.purchases().subscriptions().get(
+            packageName=package_name,
+            subscriptionId=product_id,
+            token=purchase_token
+        ).execute()
+
+        if purchase['paymentState'] == 1:
+            expiry_time = int(purchase['expiryTimeMillis'])
+            return True, expiry_time
+        return False, None
+    except Exception as e:
+        logger.error(f"Error verifying Google purchase: {str(e)}")
+        return False, None
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def purchase_subscription(request):
@@ -354,12 +398,18 @@ def purchase_subscription(request):
     if not product_id or not receipt:
         return Response({'error': 'Both product_id and receipt are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if verify_purchase(product_id, receipt, is_ios):
-        plan_type, duration = SUBSCRIPTION_MAPPING.get(product_id, (None, None))
+    if is_ios:
+        is_valid, verified_product_id, expires_date = verify_apple_purchase(receipt)
+    else:
+        is_valid, expires_date = verify_google_purchase(product_id, receipt)
+        verified_product_id = product_id if is_valid else None
+
+    if is_valid:
+        plan_type, duration = SUBSCRIPTION_MAPPING.get(verified_product_id, (None, None))
         if not plan_type or not duration:
             return Response({'error': 'Invalid product ID'}, status=status.HTTP_400_BAD_REQUEST)
 
-        success = update_subscription(user, plan_type, duration)
+        success = update_subscription(user, plan_type, duration, expires_date)
 
         if success:
             return Response({
@@ -385,10 +435,7 @@ def use_feature(request):
     user = request.user
     feature_type = request.data.get('feature_type')
 
-    # Automatic renewal of "Free Plan" limits
     user.auto_update_free_plan()
-
-    # Automatic renewal of annual plans
     user.auto_update_annual_plans()
 
     success, message = user.use_feature(feature_type)
@@ -410,7 +457,6 @@ def cancel_subscription(request):
     if user.subscription_type == 'free':
         return Response({'error': 'You do not have an active paid subscription'}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Set subscription cancellation for the end of the current period
     user.is_cancelled = True
     user.save(update_fields=['is_cancelled'])
 
@@ -432,15 +478,21 @@ def change_subscription(request):
     if not new_product_id or not receipt:
         return Response({'error': 'Both new_product_id and receipt are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if verify_purchase(new_product_id, receipt, is_ios):
-        new_plan_type, duration = SUBSCRIPTION_MAPPING.get(new_product_id, (None, None))
+    if is_ios:
+        is_valid, verified_product_id, expires_date = verify_apple_purchase(receipt)
+    else:
+        is_valid, expires_date = verify_google_purchase(new_product_id, receipt)
+        verified_product_id = new_product_id if is_valid else None
+
+    if is_valid:
+        new_plan_type, duration = SUBSCRIPTION_MAPPING.get(verified_product_id, (None, None))
         if not new_plan_type or not duration:
             return Response({'error': 'Invalid product ID'}, status=status.HTTP_400_BAD_REQUEST)
 
         if user.subscription_type == new_plan_type:
             return Response({'error': 'You are already subscribed to this plan'}, status=status.HTTP_400_BAD_REQUEST)
 
-        success = update_subscription(user, new_plan_type, duration)
+        success = update_subscription(user, new_plan_type, duration, expires_date)
 
         if success:
             return Response({
@@ -520,7 +572,7 @@ def get_available_plans(request):
 def manual_subscription_update(request):
     user_id = request.data.get('user_id')
     new_plan_type = request.data.get('new_plan_type')
-    duration = request.data.get('duration', 30)  # Default value is 30 days
+    duration = request.data.get('duration', 30)
 
     try:
         user = CustomUser.objects.get(id=user_id)
@@ -587,9 +639,8 @@ def reset_password_confirm(request):
     except CustomUser.DoesNotExist:
         return Response({'error': 'Invalid email or token'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Check token expiration (e.g., 24 hours)
     token_lifetime = timezone.now() - user.reset_token_created_at
-    if token_lifetime.total_seconds() > 86400:  # 24 hours in seconds
+    if token_lifetime.total_seconds() > 86400:
         return Response({'error': 'Reset token has expired'}, status=status.HTTP_400_BAD_REQUEST)
 
     user.set_password(new_password)
@@ -607,12 +658,18 @@ def reset_password_page(request):
     else:
         return Response({'error': 'Invalid token or email'}, status=status.HTTP_400_BAD_REQUEST)
 
-def update_subscription(user, new_type, duration):
+def update_subscription(user, new_type, duration, expires_date=None):
     max_attempts = 3
     for attempt in range(max_attempts):
         try:
             with transaction.atomic():
-                user.update_subscription(new_type, duration)
+                user.subscription_type = new_type
+                if expires_date:
+                    user.subscription_expiry = timezone.datetime.fromtimestamp(int(expires_date) / 1000, tz=timezone.utc)
+                else:
+                    user.subscription_expiry = timezone.now() + timezone.timedelta(days=duration)
+                user.is_cancelled = False
+                user.save()
             return True
         except Exception as e:
             if attempt == max_attempts - 1:
@@ -620,53 +677,97 @@ def update_subscription(user, new_type, duration):
                 return False
     return False
 
-def verify_purchase(product_id, purchase_token, is_ios):
+@api_view(['POST'])
+@csrf_exempt
+def apple_server_to_server_notification(request):
+    payload = request.data
+    
+    encoded_token = payload.get('signedPayload')
+    if not encoded_token:
+        return Response({'error': 'No signedPayload found'}, status=status.HTTP_400_BAD_REQUEST)
+    
     try:
-        if is_ios:
-            # Verifikace pro iOS
-            verify_url = 'https://sandbox.itunes.apple.com/verifyReceipt' if settings.DEBUG else 'https://buy.itunes.apple.com/verifyReceipt'
-            
-            request_data = {
-                'receipt-data': purchase_token,
-                'password': settings.APPLE_SHARED_SECRET,
-            }
-            
-            response = requests.post(verify_url, json=request_data)
-            response_data = response.json()
-            
-            if response_data['status'] == 0:
-                # Úspěšná verifikace
-                # Zde byste měli zkontrolovat další detaily nákupu
-                return True
-            return False
-        else:
-            # Verifikace pro Google Play
-            credentials = service_account.Credentials.from_service_account_file(
-                settings.GOOGLE_SERVICE_ACCOUNT_JSON,
-                scopes=['https://www.googleapis.com/auth/androidpublisher']
-            )
-            service = build('androidpublisher', 'v3', credentials=credentials)
-            
-            package_name = settings.GOOGLE_PACKAGE_NAME
-            
-            purchase = service.purchases().subscriptions().get(
-                packageName=package_name,
-                subscriptionId=product_id,
-                token=purchase_token
-            ).execute()
+        decoded_payload = jwt.decode(encoded_token, options={"verify_signature": False})
+        notification_type = decoded_payload.get('notificationType')
+        subtype = decoded_payload.get('subtype')
+        
+        if notification_type == 'SUBSCRIBED':
+            # Process new subscription
+            pass
+        elif notification_type == 'DID_RENEW':
+            # Process subscription renewal
+            pass
+        elif notification_type == 'DID_FAIL_TO_RENEW':
+            # Process renewal failure
+            pass
+        elif notification_type == 'CANCEL':
+            # Process subscription cancellation
+            pass
+        # Other notification types...
+        
+        return Response({'status': 'processed'}, status=status.HTTP_200_OK)
+    except jwt.DecodeError:
+        return Response({'error': 'Invalid JWT'}, status=status.HTTP_400_BAD_REQUEST)
 
-            if purchase['paymentState'] == 1:  # 1 znamená "payment received"
-                return True
-            return False
-    except Exception as e:
-        logger.error(f"Error verifying purchase: {str(e)}")
-        return False
+@api_view(['POST'])
+@csrf_exempt
+def google_real_time_notification(request):
+    notification_data = json.loads(request.body)
+    
+    notification_type = notification_data.get('notificationType')
+    purchase_token = notification_data.get('purchaseToken')
+    subscription_id = notification_data.get('subscriptionId')
+    
+    if notification_type == 1:  # SUBSCRIPTION_RECOVERED
+        # Handle subscription recovery
+        pass
+    elif notification_type == 2:  # SUBSCRIPTION_RENEWED
+        # Handle subscription renewal
+        pass
+    elif notification_type == 3:  # SUBSCRIPTION_CANCELED
+        # Handle subscription cancellation
+        pass
+    elif notification_type == 4:  # SUBSCRIPTION_PURCHASED
+        # Handle new subscription
+        pass
+    # Other notification types...
+    
+    # Verify and update subscription
+    is_valid, expiry_time = verify_google_purchase(subscription_id, purchase_token)
+    if is_valid:
+        # Update user's subscription
+        pass
+    
+    return Response({'status': 'processed'}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 @csrf_exempt
 def purchase_webhook(request):
-    # Implementace zpracování webhook notifikací
-    # Toto bude záviset na tom, jak Google Play a Apple App Store posílají notifikace
     logger.info("Received purchase webhook notification")
-    # Zde byste měli implementovat logiku pro zpracování notifikací
-    return Response({'status': 'received'}, status=status.HTTP_200_OK)
+    
+    # Determine if it's an Apple or Google notification
+    if 'signedPayload' in request.data:
+        return apple_server_to_server_notification(request)
+    elif 'message' in request.data:
+        return google_real_time_notification(request)
+    else:
+        logger.warning("Received unknown webhook notification")
+        return Response({'status': 'unknown'}, status=status.HTTP_400_BAD_REQUEST)
+
+# Helper function to process subscription updates
+def process_subscription_update(user_id, product_id, expires_date):
+    try:
+        user = CustomUser.objects.get(id=user_id)
+        plan_type, duration = SUBSCRIPTION_MAPPING.get(product_id, (None, None))
+        if plan_type and duration:
+            success = update_subscription(user, plan_type, duration, expires_date)
+            if success:
+                logger.info(f"Subscription updated for user {user_id}: {plan_type}")
+            else:
+                logger.error(f"Failed to update subscription for user {user_id}")
+        else:
+            logger.error(f"Invalid product ID: {product_id}")
+    except CustomUser.DoesNotExist:
+        logger.error(f"User not found: {user_id}")
+
+# Add any additional helper functions or views as needed

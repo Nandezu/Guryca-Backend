@@ -1,14 +1,15 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    
     purchase_webhook,
     change_username, change_email, change_password, change_region,
     CustomUserViewSet, FavoriteItemViewSet, login, register, LogoutView,
     reset_password_page, reset_password_request, reset_password_confirm,
-    get_subscription_details, purchase_subscription, cancel_subscription, 
+    get_subscription_details, purchase_subscription, cancel_subscription,
     use_feature, get_available_plans, change_subscription,
-    manual_subscription_update
+    manual_subscription_update,
+    apple_server_to_server_notification,
+    google_real_time_notification
 )
 
 router = DefaultRouter()
@@ -49,6 +50,9 @@ urlpatterns = [
     path('subscription/use_feature/', use_feature, name='use-feature'),
     path('subscription/plans/', get_available_plans, name='available-plans'),
     path('subscription/manual_update/', manual_subscription_update, name='manual-subscription-update'),
-
+    
+    # Webhooky pro nákupy
     path('purchase-webhook/', purchase_webhook, name='purchase-webhook'),
+    path('apple-webhook/', apple_server_to_server_notification, name='apple-webhook'),
+    path('google-webhook/', google_real_time_notification, name='google-webhook'),
 ]

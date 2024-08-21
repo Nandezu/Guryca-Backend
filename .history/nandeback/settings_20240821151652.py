@@ -254,10 +254,17 @@ APPLE_BUNDLE_ID = os.environ.get('APPLE_BUNDLE_ID', 'com.nandezu.nandefrond')
 APPLE_SHARED_SECRET = os.environ.get('APPLE_SHARED_SECRET', '588ae1e916b24e2a957e2ed3faa5714c')
 
 # Google Play konfigurace
-GOOGLE_SERVICE_ACCOUNT_JSON = os.path.join(BASE_DIR, 'secrets', 'nandezu-apapnandezu-app-539591179ddb.json')
+GOOGLE_SERVICE_ACCOUNT_JSON = os.path.join(BASE_DIR, 'secrets', 'service_account.json')
 GOOGLE_PACKAGE_NAME = os.environ.get('GOOGLE_PACKAGE_NAME', 'com.nandezu.nandefrond')
 
 # Webhooky pro notifikace o nákupech
 APPLE_WEBHOOK_URL = os.environ.get('APPLE_WEBHOOK_URL', 'https://app-tdh1.onrender.com/apple-webhook/')
 GOOGLE_WEBHOOK_URL = os.environ.get('GOOGLE_WEBHOOK_URL', 'https://app-tdh1.onrender.com/google-webhook/')
 
+# JWT konfigurace pro Apple
+APPLE_JWT_KEY_ID = os.environ.get('APPLE_JWT_KEY_ID')
+APPLE_JWT_ISS = os.environ.get('APPLE_JWT_ISS')
+APPLE_JWT_AUD = 'appstoreconnect-v1'
+
+# Cesta k Apple private key souboru
+APPLE_PRIVATE_KEY_PATH = os.path.join(BASE_DIR, 'secrets', 'AuthKey.p8')
