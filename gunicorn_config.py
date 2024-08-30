@@ -1,2 +1,3 @@
-timeout = 40  # Nastaví timeout na 5 minut
-workers = 4    # Použije 4 workery, upravte podle potřeby
+timeout = 40
+workers = 4
+bind = "0.0.0.0:10000"
