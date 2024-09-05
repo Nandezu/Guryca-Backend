@@ -9,7 +9,9 @@ from .views import (
     use_feature, get_available_plans, change_subscription,
     manual_subscription_update,
     apple_server_to_server_notification,
-    google_real_time_notification
+    google_real_time_notification,
+    redirect_to_payment,  # Nový import
+    stripe_webhook,  # Nový import
 )
 
 router = DefaultRouter()
@@ -55,4 +57,8 @@ urlpatterns = [
     path('purchase-webhook/', purchase_webhook, name='purchase-webhook'),
     path('apple-webhook/', apple_server_to_server_notification, name='apple-webhook'),
     path('google-webhook/', google_real_time_notification, name='google-webhook'),
+
+    # Nové cesty pro Stripe Payment Links
+    path('buy-credits/', redirect_to_payment, name='buy-credits'),
+    path('stripe-webhook/', stripe_webhook, name='stripe-webhook'),
 ]

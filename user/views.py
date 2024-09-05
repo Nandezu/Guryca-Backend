@@ -22,7 +22,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -32,10 +32,13 @@ from .serializers import CustomUserSerializer, FavoriteItemSerializer, FavoriteI
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import requests
+import stripe
 
 logger = logging.getLogger(__name__)
 
 SUBSCRIPTION_MAPPING = settings.SUBSCRIPTION_MAPPING
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
@@ -384,6 +387,48 @@ def verify_google_purchase(product_id, purchase_token):
     except Exception as e:
         logger.error(f"Error verifying Google purchase: {str(e)}")
         return False, None
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def redirect_to_payment(request):
+    payment_link_url = "https://buy.stripe.com/eVa7tO6PxcCTdnGbIS"
+    user_id = request.user.id
+    payment_link_with_user = f"{payment_link_url}?client_reference_id={user_id}"
+    return Response({'payment_link': payment_link_with_user})
+
+@csrf_exempt
+@require_POST
+def stripe_webhook(request):
+    payload = request.body
+    sig_header = request.META['HTTP_STRIPE_SIGNATURE']
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError as e:
+        return HttpResponse(status=400)
+    except stripe.error.SignatureVerificationError as e:
+        return HttpResponse(status=400)
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        handle_successful_payment(session)
+
+    return HttpResponse(status=200)
+
+def handle_successful_payment(session):
+    user_id = session.get('client_reference_id')
+    if user_id:
+        try:
+            user = CustomUser.objects.get(id=user_id)
+            user.virtual_try_ons_remaining += 50  # Add 50 credits
+            user.save()
+            logger.info(f"Added 50 virtual try-ons to user {user.id}")
+        except CustomUser.DoesNotExist:
+            logger.error(f"User not found with id: {user_id}")
+    else:
+        logger.error("User ID not found in session metadata")
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -770,4 +815,6 @@ def process_subscription_update(user_id, product_id, expires_date):
     except CustomUser.DoesNotExist:
         logger.error(f"User not found: {user_id}")
 
-# Add any additional helper functions or views as needed
+# End of file
+
+    

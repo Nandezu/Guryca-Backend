@@ -3,12 +3,12 @@ from pathlib import Path
 import dj_database_url
 from dotenv import load_dotenv
 
-# Načtení proměnných z .env souboru
+# Načtení proměnných z .env souboru (pro lokální vývoj)
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-h!xpc8nnawpijntcf+9+q6d4d-o)3(%e&71fx5*w=)l8#@)z2l')
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
@@ -166,7 +166,7 @@ LOGGING = {
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_REGION_NAME = 'us-east-1'
+AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
 AWS_S3_SIGNATURE_VERSION = 's3v4'
 AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None
@@ -178,12 +178,12 @@ AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.sendgrid.net'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'apikey'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.sendgrid.net')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'apikey')
 EMAIL_HOST_PASSWORD = os.environ.get('SENDGRID_API_KEY')
-DEFAULT_FROM_EMAIL = 'noreply@nandezu.com'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@nandezu.com')
 
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
 
@@ -215,20 +215,20 @@ else:
 # Konfigurace pro in-app nákupy
 SUBSCRIPTION_PRODUCTS = {
     'ios': {
-        'BASIC_MONTHLY': 'com.nandezu.basic_monthly',
-        'PRO_MONTHLY': 'com.nandezu.promonthly',
-        'PREMIUM_MONTHLY': 'com.nandezu.premiummonthly',
-        'BASIC_ANNUAL': 'com.nandezu.basicannual',
-        'PRO_ANNUAL': 'com.nandezu.proannual',
-        'PREMIUM_ANNUAL': 'com.nandezu.premiumannual',
+        'BASIC_MONTHLY': os.environ.get('IOS_BASIC_MONTHLY', 'com.nandezu.basic_monthly'),
+        'PRO_MONTHLY': os.environ.get('IOS_PRO_MONTHLY', 'com.nandezu.promonthly'),
+        'PREMIUM_MONTHLY': os.environ.get('IOS_PREMIUM_MONTHLY', 'com.nandezu.premiummonthly'),
+        'BASIC_ANNUAL': os.environ.get('IOS_BASIC_ANNUAL', 'com.nandezu.basicannual'),
+        'PRO_ANNUAL': os.environ.get('IOS_PRO_ANNUAL', 'com.nandezu.proannual'),
+        'PREMIUM_ANNUAL': os.environ.get('IOS_PREMIUM_ANNUAL', 'com.nandezu.premiumannual'),
     },
     'android': {
-        'BASIC_MONTHLY': 'basic.monthly',
-        'PRO_MONTHLY': 'pro.monthly',
-        'PREMIUM_MONTHLY': 'premium.monthly',
-        'BASIC_ANNUAL': 'basic.annual',
-        'PRO_ANNUAL': 'pro.annual',
-        'PREMIUM_ANNUAL': 'premium.annual',
+        'BASIC_MONTHLY': os.environ.get('ANDROID_BASIC_MONTHLY', 'basic.monthly'),
+        'PRO_MONTHLY': os.environ.get('ANDROID_PRO_MONTHLY', 'pro.monthly'),
+        'PREMIUM_MONTHLY': os.environ.get('ANDROID_PREMIUM_MONTHLY', 'premium.monthly'),
+        'BASIC_ANNUAL': os.environ.get('ANDROID_BASIC_ANNUAL', 'basic.annual'),
+        'PRO_ANNUAL': os.environ.get('ANDROID_PRO_ANNUAL', 'pro.annual'),
+        'PREMIUM_ANNUAL': os.environ.get('ANDROID_PREMIUM_ANNUAL', 'premium.annual'),
     }
 }
 
@@ -251,13 +251,17 @@ VERIFY_PURCHASES = os.environ.get('NANDEZU_ENV') == 'production' or os.environ.g
 
 # Apple App Store konfigurace
 APPLE_BUNDLE_ID = os.environ.get('APPLE_BUNDLE_ID', 'com.nandezu.nandefrond')
-APPLE_SHARED_SECRET = os.environ.get('APPLE_SHARED_SECRET', '588ae1e916b24e2a957e2ed3faa5714c')
+APPLE_SHARED_SECRET = os.environ.get('APPLE_SHARED_SECRET')
 
 # Google Play konfigurace
-GOOGLE_SERVICE_ACCOUNT_JSON = os.path.join(BASE_DIR, 'secrets', 'nandezu-apapnandezu-app-539591179ddb.json')
+GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', os.path.join(BASE_DIR, 'secrets', 'nandezu-app-539591179ddb.json'))
 GOOGLE_PACKAGE_NAME = os.environ.get('GOOGLE_PACKAGE_NAME', 'com.nandezu.nandefrond')
 
 # Webhooky pro notifikace o nákupech
 APPLE_WEBHOOK_URL = os.environ.get('APPLE_WEBHOOK_URL', 'https://app-tdh1.onrender.com/apple-webhook/')
 GOOGLE_WEBHOOK_URL = os.environ.get('GOOGLE_WEBHOOK_URL', 'https://app-tdh1.onrender.com/google-webhook/')
 
+# Stripe configuration
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
