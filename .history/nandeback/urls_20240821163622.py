@@ -8,8 +8,7 @@ from user.views import (
     cancel_subscription, get_available_plans,
     manual_subscription_update, reset_password_request, reset_password_confirm,
     purchase_subscription, change_subscription, 
-    purchase_webhook, apple_server_to_server_notification, google_real_time_notification,
-    redirect_to_payment  # Přidejte tento import
+    purchase_webhook, apple_server_to_server_notification, google_real_time_notification
 )
 from django.conf import settings
 from django.conf.urls.static import static
@@ -44,9 +43,6 @@ urlpatterns = [
     path('purchase-webhook/', purchase_webhook, name='purchase-webhook'),
     path('apple-webhook/', apple_server_to_server_notification, name='apple-webhook'),
     path('google-webhook/', google_real_time_notification, name='google-webhook'),
-
-    # Nová cesta pro buy-credits
-    path('buy-credits/', redirect_to_payment, name='buy-credits'),
 ]
 
 if settings.DEBUG:
