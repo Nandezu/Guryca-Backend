@@ -1,5 +1,4 @@
 from django.db import models
-import uuid
 
 class Product(models.Model):
     CLOTHING_TYPE_CHOICES = [
@@ -41,19 +40,17 @@ class Product(models.Model):
         ('slovakia', 'Slovakia'),
     ]
 
+    name = models.CharField(max_length=21)
+    description = models.TextField()
     store_link = models.URLField(max_length=1000)
     image_url = models.URLField()
+    sku = models.CharField(max_length=100)
     clothing_type = models.CharField(max_length=50, choices=CLOTHING_TYPE_CHOICES, default='upper_body')
     clothing_category = models.CharField(max_length=50, choices=CLOTHING_CATEGORY_CHOICES)
     manufacturer_name = models.CharField(max_length=17)
+    country_of_origin = models.CharField(max_length=100, choices=COUNTRY_CHOICES)
     colour = models.CharField(max_length=5, choices=COLOUR_CHOICES, default='light')
     price = models.CharField(max_length=50, default='0')
-    sku = models.CharField(max_length=100, unique=True, editable=False)
-
-    def save(self, *args, **kwargs):
-        if not self.sku:
-            self.sku = str(uuid.uuid4())  # Generuje náhodný UUID
-        super(Product, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.name

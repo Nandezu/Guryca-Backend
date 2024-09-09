@@ -47,7 +47,7 @@ class CustomUser(AbstractUser):
 
     def reset_monthly_limits(self):
         limits = {
-            'free': (5, 30, 30),
+            'free': (5, 3, 7),
             'basic': (50, 30, 20),
             'pro': (100, 50, 40),
             'premium': (200, 100, 60),
