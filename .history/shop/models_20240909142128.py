@@ -36,7 +36,7 @@ class Product(models.Model):
     clothing_category = models.CharField(max_length=50, choices=CLOTHING_CATEGORY_CHOICES)
     manufacturer_name = models.CharField(max_length=17)
     colour = models.CharField(max_length=5, choices=COLOUR_CHOICES, default='light')
-    price = models.CharField(max_length=15, default="0 USD")
+    price = models.DecimalField(max_digits=10,  default=0)
 
     def save(self, *args, **kwargs):
         if not self.sku:  # Pokud SKU není nastavené, generuj nové
@@ -47,7 +47,9 @@ class Product(models.Model):
         """Generuje náhodné SKU."""
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
 
-
+    def formatted_price(self):
+        """Vrátí cenu formátovanou s USD."""
+        return f"{self.price} USD"
 
     def __str__(self):
         return self.name
