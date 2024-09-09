@@ -1,5 +1,3 @@
-import random
-import string
 from django.db import models
 
 class Product(models.Model):
@@ -14,7 +12,7 @@ class Product(models.Model):
         ('top', 'Top'),
         ('jeans', 'Jeans'),
         ('jumpsuit', 'Jumpsuit'),
-        ('short', 'Short'),
+        ('short', 'short'),
         ('jacket', 'Jacket'),
         ('sweatpants', 'Sweatpants'),
         ('skirt', 'Skirt'),
@@ -26,29 +24,33 @@ class Product(models.Model):
 
     COLOUR_CHOICES = [
         ('light', 'Light'),
-        
+        ('dark', 'Dark'),
     ]
 
-    
+    COUNTRY_CHOICES = [
+        ('usa', 'USA'),
+        ('united_kingdom', 'United Kingdom'),
+        ('germany', 'Germany'),
+        ('brazil', 'Brazil'),
+        ('italy', 'Italy'),
+        ('france', 'France'),
+        ('spain', 'Spain'),
+        ('poland', 'Poland'),
+        ('czech_republic', 'Czech Republic'),
+        ('slovakia', 'Slovakia'),
+    ]
 
-    name = models.CharField(max_length=21, default='Default Name')
+    name = models.CharField(max_length=21)
+    description = models.TextField()
     store_link = models.URLField(max_length=1000)
     image_url = models.URLField()
-    sku = models.CharField(max_length=100, unique=True, blank=True)
+    sku = models.CharField(max_length=100)
     clothing_type = models.CharField(max_length=50, choices=CLOTHING_TYPE_CHOICES, default='upper_body')
     clothing_category = models.CharField(max_length=50, choices=CLOTHING_CATEGORY_CHOICES)
     manufacturer_name = models.CharField(max_length=17)
+    country_of_origin = models.CharField(max_length=100, choices=COUNTRY_CHOICES, default='usa')
     colour = models.CharField(max_length=5, choices=COLOUR_CHOICES, default='light')
-    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-
-    def save(self, *args, **kwargs):
-        if not self.sku:  # Pokud SKU není nastavené, generuj nové
-            self.sku = self.generate_sku()
-        super(Product, self).save(*args, **kwargs)
-
-    def generate_sku(self):
-        """Generuje náhodné SKU."""
-        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+    price = models.CharField(max_length=50, default='0')
 
     def __str__(self):
         return self.name
